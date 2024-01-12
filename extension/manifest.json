@@ -1,0 +1,28 @@
+{
+    "manifest_version": 2,
+    "name": "TouchGrass",
+    "version": "1.0",
+    "description": "A tool that helps you with your YouTube addiction.",
+    "icons": {
+        "96": "icons/logo_1.ico"
+    },
+    "web_accessible_resources": [
+        "./*"
+    ],
+    "content_scripts": [
+        {
+            "run_at": "document_end",
+            "matches": [
+                "*://*.youtube.com/*"
+            ],
+            "js": [
+                "index.js"
+            ]
+        }
+    ],
+    "browser_action": {
+        "default_icon": "icons/logo_1.ico",
+        "default_title": "TouchGrass",
+        "default_popup": "homepage.html"
+    }
+}

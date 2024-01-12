@@ -1,0 +1,22 @@
+[package]
+name = "touch-grass"
+version = "0.1.0"
+edition = "2021"
+description = "A tool that helps you with your YouTube addiction."
+license = "MIT"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+console_error_panic_hook = "0.1.7"
+dioxus = "0.4.0"
+dioxus-web = { version = "0.4.0", features = ["panic_hook"] }
+wasm-bindgen = "0.2.87"
+web-sys = { version = "0.3.64", features = [
+    "Window",
+    "Document",
+    "Element",
+    "HtmlImageElement",
+] }
