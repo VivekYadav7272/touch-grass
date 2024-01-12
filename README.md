@@ -1,5 +1,5 @@
 # TouchGrass (WIP)
-A web extension that you can use to time your YouTube usage and to control under what hours can you "doom-scroll" it.
+A web extension (written in Rust btw) that you can use to time your YouTube usage and to control under what hours can you "doom-scroll" it.
 The current goals of this project is to only disable the home page of YouTube, since that's where the most distraction happens. Allowing you to search will always be open.
 
 Currently, it's only tested to work on Firefox, though Chromium support should be trivial.
