@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2021"
 description = "A tool that helps you with your YouTube addiction."
 license = "MIT"
+repository = "https://github.com/VivekYadav7272/touch-grass.git"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
