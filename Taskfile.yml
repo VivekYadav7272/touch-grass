@@ -17,3 +17,5 @@ tasks:
       - cp assets/manifest.json extension/manifest.json
       - cp assets/index.js extension/index.js
       - cp -r assets/icons extension/icons
+      - cp assets/homepage.js extension/homepage.js
+      - cp assets/homepage.html extension/homepage.html
