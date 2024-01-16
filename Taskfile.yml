@@ -1,0 +1,21 @@
+version: "3"
+
+tasks:
+  build:
+    cmds:
+      - task: wasm_pack
+      - task: assets
+
+  wasm_pack:
+    cmds:
+      - wasm-pack build --target=web
+
+  assets:
+    cmds:
+      - rm -rf extension
+      - cp -r pkg extension
+      - cp assets/manifest.json extension/manifest.json
+      - cp assets/index.js extension/index.js
+      - cp -r assets/icons extension/icons
+      - cp assets/homepage.js extension/homepage.js
+      - cp assets/homepage.html extension/homepage.html
