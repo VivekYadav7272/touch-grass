@@ -1,0 +1,16 @@
+version: "3"
+
+tasks:
+  build:
+    cmds:
+      - task: wasm_pack
+      - task: assets
+
+  wasm_pack:
+    cmds:
+      - wasm-pack build --target=web
+
+  assets:
+    cmds:
+      - rm -rf extension
+      - cp -r pkg extension
