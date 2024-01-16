@@ -14,3 +14,6 @@ tasks:
     cmds:
       - rm -rf extension
       - cp -r pkg extension
+      - cp assets/manifest.json extension/manifest.json
+      - cp assets/index.js extension/index.js
+      - cp -r assets/icons extension/icons
