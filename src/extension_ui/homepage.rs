@@ -1,7 +1,6 @@
-use std::error::Error;
-
-use dioxus::{html::h3, prelude::*};
+use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::error::Error;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -24,7 +23,7 @@ fn app(cx: Scope) -> Element {
         Ok(config) => show_settings(cx, config),
         Err(ConfigError::EmptyStorage) => show_welcome_screen(cx),
         Err(ConfigError::StorageNotFound) => render!(
-            h3 { "Storage bucket not found! :( It either seems like you are either using a very old browser
+            h3 { "Storage bucket not found! :( It seems like you are either using a very old browser
                 or you're not running it in one"}
         ),
         Err(ConfigError::WontAllowStorage) => render!(
@@ -60,7 +59,7 @@ fn get_configs() -> Result<Config, ConfigError> {
         .map_err(|_| ConfigError::WontAllowStorage)?
         .expect("Calling .local_storage() should never return null/None, according to MDN")
         .get_item("config")
-        .expect("Calling .get_item() should never throw, only return None if item doesn't exist or the item, according to MDN")
+        .expect("Calling .get_item() should never throw, only return None if item doesn't exist, or the item if it does, according to MDN")
         .ok_or(ConfigError::EmptyStorage)
         .and_then(|item| {
             serde_json::from_str(&item).map_err(|_| ConfigError::CorruptedConfig)
@@ -88,7 +87,7 @@ fn remove_configs() -> Result<(), ConfigError> {
         .map_err(|_| ConfigError::WontAllowStorage)?
         .expect("Calling .local_storage() should never return null/None, according to MDN")
         .remove_item("config") // NOTE: This method wouldn't throw if key isn't present. It just wouldn't do anything.
-        .map_err(|_| ConfigError::WontAllowStorage)
+        .map_err(|_| ConfigError::WontAllowStorage) // This error is thrown when me no access
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
