@@ -1,5 +1,6 @@
 use std::error::Error;
 
+use crate::console_log;
 use dioxus::{html::h3, prelude::*};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
@@ -24,123 +25,112 @@ fn app(cx: Scope) -> Element {
         Ok(config) => show_settings(cx, config),
         Err(ConfigError::EmptyStorage) => show_welcome_screen(cx),
         Err(ConfigError::StorageNotFound) => render!(
-            h3 { "Storage bucket not found! :( It either seems like you are either using a very old browser
-                or you're not running it in one"}
+            h3 {
+                "Storage bucket not found! :( It either seems like you are either using a very old browser
+                or you're not running it in one"
+            }
         ),
         Err(ConfigError::WontAllowStorage) => render!(
-            h3 { "You need to allow storage for this extension to work! It might be that you've disabled use of cookies" }
+            h3 {
+                "You need to allow storage for this extension to work! It might be that you've disabled use of cookies"
+            }
         ),
         Err(ConfigError::CorruptedConfig) => {
             // We need to remove the config and then show the welcome screen
             remove_configs().expect("Couldn't set the default config");
 
             render!(
-                h3 { "The config is corrupted! We're gonna have to start from scratch! Try re-opening the extension popup" }
+                h3 {
+                    "The config is corrupted! We're gonna have to start from scratch! Try re-opening the extension popup"
+                }
             )
         }
     };
 
     render!(
-        link {
-            rel: "stylesheet",
-            href: "./output.css",
-        },
+        link { rel: "stylesheet", href: "./output.css" }
         page
     )
 }
 
 fn show_welcome_screen(cx: Scope) -> Element {
+    let start_hour: &UseState<Option<u32>> = use_state(cx, || None);
+    let start_minute: &UseState<Option<u32>> = use_state(cx, || None);
+    let end_hour: &UseState<Option<u32>> = use_state(cx, || None);
+    let end_minute: &UseState<Option<u32>> = use_state(cx, || None);
+
     render!(
-        div {
-            class: "rounded-lg border bg-card text-card-foreground shadow-sm w-full max-w-sm mx-auto",
-            div {
-                class: "flex flex-col space-y-1.5 p-6",
-                h3 {
-                    class: "font-semibold whitespace-nowrap tracking-tight text-lg",
-                    "TouchGrass"
-                },
-                p {
-                    class: "text-sm text-muted-foreground",
+        div { class: "rounded-lg border bg-card text-card-foreground shadow-sm w-full max-w-sm mx-auto",
+            div { class: "flex flex-col space-y-1.5 p-6",
+                h3 { class: "font-semibold whitespace-nowrap tracking-tight text-lg", "TouchGrass" }
+                p { class: "text-sm text-muted-foreground",
                     "Control your YouTube usage with this extension."
                 }
-            },
-            div {
-                class: "p-6 grid gap-4",
-                div {
-                    class: "flex items-center",
+            }
+            div { class: "p-6 grid gap-4",
+                div { class: "flex items-center",
                     label {
                         class: "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
                         r#for: "start-time",
                         "Start Time"
                     }
-                },
-                div {
-                    class: "flex items-center",
+                }
+                div { class: "flex items-center",
                     input {
                         class: "flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-16",
                         id: "start-hour",
                         placeholder: "08",
-                        r#type: "number"
-                    },
-                    span {
-                        class: "mx-1",
-                        ":", // Span text
-                    },
+                        r#type: "number",
+
+                        oninput: move |evt| {
+                            start_hour.set(evt.value.parse::<u32>().ok().filter(|hr| *hr < 24));
+                        }
+                    }
+                    span { class: "mx-1", ":" }
                     input {
                         class: "flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-16",
                         id: "start-minute",
                         placeholder: "00",
                         r#type: "number"
                     }
-                },
-                div {
-                    class: "flex items-center",
+                }
+                div { class: "flex items-center",
                     label {
                         class: "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
                         r#for: "end-time",
                         "End Time"
                     }
-                },
-                div {
-                    class: "flex items-center",
+                }
+                div { class: "flex items-center",
                     input {
                         class: "flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-16",
                         id: "end-hour",
                         placeholder: "17",
                         r#type: "number"
-                    },
-                    span {
-                        class: "mx-1",
-                        ":", // Span text
-                    },
+                    }
+                    span { class: "mx-1", ":" }
                     input {
                         class: "flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-16",
                         id: "end-minute",
                         placeholder: "00",
                         r#type: "number"
                     }
-                },
-                button {
-                    class: "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-white hover:bg-primary/90 h-10 px-4 py-2 w-full",
+                }
+                button { class: "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-white hover:bg-primary/90 h-10 px-4 py-2 w-full",
                     "Save"
                 }
-            },
-            div {
-                class: "flex items-center p-6",
-                p {
-                    class: "text-xs text-gray-500 dark:text-gray-400",
+            }
+            div { class: "flex items-center p-6",
+                p { class: "text-xs text-gray-500 dark:text-gray-400",
                     "YouTube will be disabled between the specified times."
                 }
             }
         }
-
     )
 }
 
 fn show_settings(cx: Scope, config: Config) -> Element {
-    render!(
-        h1 { "Speaking from show_settings!"}
-    )
+    render!( h1 { "Speaking from show_settings!" } )
 }
 
 fn get_configs() -> Result<Config, ConfigError> {
