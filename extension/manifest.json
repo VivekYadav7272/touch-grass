@@ -13,7 +13,8 @@
         {
             "run_at": "document_end",
             "matches": [
-                "*://*.youtube.com/*"
+                "*://*.youtube.com/*",
+                "*://youtube.com/*"
             ],
             "js": [
                 "index.js"

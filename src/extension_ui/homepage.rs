@@ -1,6 +1,7 @@
-use dioxus::prelude::*;
-use serde::{Deserialize, Serialize};
 use std::error::Error;
+
+use dioxus::{html::h3, prelude::*};
+use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -19,11 +20,11 @@ fn app(cx: Scope) -> Element {
     // First we need to check if the user has even setup the extension or not.
     // Depending on that, we either render the welcome screen or the normal setting screen.
 
-    match get_configs() {
+    let page = match get_configs() {
         Ok(config) => show_settings(cx, config),
         Err(ConfigError::EmptyStorage) => show_welcome_screen(cx),
         Err(ConfigError::StorageNotFound) => render!(
-            h3 { "Storage bucket not found! :( It seems like you are either using a very old browser
+            h3 { "Storage bucket not found! :( It either seems like you are either using a very old browser
                 or you're not running it in one"}
         ),
         Err(ConfigError::WontAllowStorage) => render!(
@@ -37,12 +38,102 @@ fn app(cx: Scope) -> Element {
                 h3 { "The config is corrupted! We're gonna have to start from scratch! Try re-opening the extension popup" }
             )
         }
-    }
+    };
+
+    render!(
+        link {
+            rel: "stylesheet",
+            href: "./output.css",
+        },
+        page
+    )
 }
 
 fn show_welcome_screen(cx: Scope) -> Element {
     render!(
-        h1 { "Speaking from show_welcome_screen!"}
+        div {
+            class: "rounded-lg border bg-card text-card-foreground shadow-sm w-full max-w-sm mx-auto",
+            div {
+                class: "flex flex-col space-y-1.5 p-6",
+                h3 {
+                    class: "font-semibold whitespace-nowrap tracking-tight text-lg",
+                    "TouchGrass"
+                },
+                p {
+                    class: "text-sm text-muted-foreground",
+                    "Control your YouTube usage with this extension."
+                }
+            },
+            div {
+                class: "p-6 grid gap-4",
+                div {
+                    class: "flex items-center",
+                    label {
+                        class: "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
+                        r#for: "start-time",
+                        "Start Time"
+                    }
+                },
+                div {
+                    class: "flex items-center",
+                    input {
+                        class: "flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-16",
+                        id: "start-hour",
+                        placeholder: "08",
+                        r#type: "number"
+                    },
+                    span {
+                        class: "mx-1",
+                        ":", // Span text
+                    },
+                    input {
+                        class: "flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-16",
+                        id: "start-minute",
+                        placeholder: "00",
+                        r#type: "number"
+                    }
+                },
+                div {
+                    class: "flex items-center",
+                    label {
+                        class: "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
+                        r#for: "end-time",
+                        "End Time"
+                    }
+                },
+                div {
+                    class: "flex items-center",
+                    input {
+                        class: "flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-16",
+                        id: "end-hour",
+                        placeholder: "17",
+                        r#type: "number"
+                    },
+                    span {
+                        class: "mx-1",
+                        ":", // Span text
+                    },
+                    input {
+                        class: "flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-16",
+                        id: "end-minute",
+                        placeholder: "00",
+                        r#type: "number"
+                    }
+                },
+                button {
+                    class: "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-white hover:bg-primary/90 h-10 px-4 py-2 w-full",
+                    "Save"
+                }
+            },
+            div {
+                class: "flex items-center p-6",
+                p {
+                    class: "text-xs text-gray-500 dark:text-gray-400",
+                    "YouTube will be disabled between the specified times."
+                }
+            }
+        }
+
     )
 }
 
@@ -59,7 +150,7 @@ fn get_configs() -> Result<Config, ConfigError> {
         .map_err(|_| ConfigError::WontAllowStorage)?
         .expect("Calling .local_storage() should never return null/None, according to MDN")
         .get_item("config")
-        .expect("Calling .get_item() should never throw, only return None if item doesn't exist, or the item if it does, according to MDN")
+        .expect("Calling .get_item() should never throw, only return None if item doesn't exist or the item, according to MDN")
         .ok_or(ConfigError::EmptyStorage)
         .and_then(|item| {
             serde_json::from_str(&item).map_err(|_| ConfigError::CorruptedConfig)
@@ -87,7 +178,7 @@ fn remove_configs() -> Result<(), ConfigError> {
         .map_err(|_| ConfigError::WontAllowStorage)?
         .expect("Calling .local_storage() should never return null/None, according to MDN")
         .remove_item("config") // NOTE: This method wouldn't throw if key isn't present. It just wouldn't do anything.
-        .map_err(|_| ConfigError::WontAllowStorage) // This error is thrown when me no access
+        .map_err(|_| ConfigError::WontAllowStorage)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]

@@ -1,0 +1,6 @@
+/* Idk how tailwind works. Online guides suggest creating this template CSS file and then using the watcher
+to generate the actual CSS file in the output directory.
+*/
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
