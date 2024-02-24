@@ -16,8 +16,9 @@ Currently, it's only tested to work on Firefox, though Chromium support should b
 # How to build and run
 1) Clone the repo.
 2) Go to the root of the project (where Cargo.toml resides), and run 
-`wasm-pack build --target=web`.
-3) A new `pkg` folder should've been created. All you need to do is copy `touch_grass.js`, `touch_grass_bg.wasm` and `snippets` folder into the `extension` folder (the ones in there are artifacts from previous builds, it's okay to replace them with the newer versions).
+`./build.sh`. You might need to give it execution privileges (`chmod +x ./build.sh`).
+3) Compile the Tailwind CSS file into the extension/ folder as output.css. I do it by the Tailwind watcher command.
+   (`npx tailwindcss -i ./src/extension_ui/input.css -o ./extension/output.css --watch`)
 4) In case of Firefox, open the browser and go to `about:debugging`, and under the "This Firefox" tab on the left-hand panel, click on "Load Temporary Add-on".
 5) A new dialog box should appear. There, select extension/manifest.json (really any file within extension/ folder should work), and select okay or whatever it says I can't be arsed to open that dialog box again.
 6) That's it! Whatever skeleton of the project is written till that time should appear as a new extension. (It might be hidden under the "puzzle"/"plugin" icon in your menu bar).
