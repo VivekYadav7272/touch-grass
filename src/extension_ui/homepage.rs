@@ -91,7 +91,10 @@ fn show_welcome_screen(cx: Scope) -> Element {
                         class: "flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-16",
                         id: "start-minute",
                         placeholder: "00",
-                        r#type: "number"
+                        r#type: "number",
+                        oninput: move |evt| {
+                            start_minute.set(evt.value.parse::<u32>().ok().filter(|mnt| *mnt < 60));
+                        }
                     }
                 }
                 div { class: "flex items-center",
@@ -106,14 +109,20 @@ fn show_welcome_screen(cx: Scope) -> Element {
                         class: "flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-16",
                         id: "end-hour",
                         placeholder: "17",
-                        r#type: "number"
+                        r#type: "number",
+                        oninput: move |evt| {
+                            end_hour.set(evt.value.parse::<u32>().ok().filter(|hr| *hr < 24));
+                        }
                     }
                     span { class: "mx-1", ":" }
                     input {
                         class: "flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-16",
                         id: "end-minute",
                         placeholder: "00",
-                        r#type: "number"
+                        r#type: "number",
+                        oninput: move |evt| {
+                            end_minute.set(evt.value.parse::<u32>().ok().filter(|mnt| *mnt < 60));
+                        }
                     }
                 }
                 button { class: "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-white hover:bg-primary/90 h-10 px-4 py-2 w-full",
