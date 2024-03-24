@@ -13,7 +13,7 @@ pub fn start_app() {
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 struct Config {
-    block_time_start: u32, // Seconds since the beginning of the day
+    block_time_start: u32, // Time in minutes
     block_time_end: u32,
 }
 
@@ -53,12 +53,24 @@ fn app(cx: Scope) -> Element {
     )
 }
 
-fn show_welcome_screen(cx: Scope) -> Element {
-    let start_hour: &UseState<Option<u32>> = use_state(cx, || None);
-    let start_minute: &UseState<Option<u32>> = use_state(cx, || None);
-    let end_hour: &UseState<Option<u32>> = use_state(cx, || None);
-    let end_minute: &UseState<Option<u32>> = use_state(cx, || None);
+fn parse_time(time: &str) -> Option<u32> {
+    time.split_once(':').and_then(|(hour, minute)| {
+        let hour = hour.parse::<u32>().ok()?;
+        let minute = minute.parse::<u32>().ok()?;
+        Some(hour * 60 + minute)
+    })
+}
 
+fn show_welcome_screen(cx: Scope) -> Element {
+    let start_time: &UseState<Option<u32>> = use_state(cx, || None);
+    let end_time: &UseState<Option<u32>> = use_state(cx, || None);
+
+    let inp_style = |state: &UseState<Option<u32>>| {
+        format!(
+            "flex h-10 rounded-md border border-input bg-background mt-2 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-23 {}",
+            if state.current().is_none() { "red-border" } else { "" }
+        )
+    };
     render!(
         div { class: "rounded-lg border bg-card text-card-foreground shadow-sm w-full max-w-sm mx-auto",
             div { class: "flex flex-col space-y-1.5 p-6",
@@ -68,64 +80,60 @@ fn show_welcome_screen(cx: Scope) -> Element {
                 }
             }
             div { class: "p-6 grid gap-4",
-                div { class: "flex items-center",
-                    label {
-                        class: "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
-                        r#for: "start-time",
-                        "Start Time"
-                    }
-                }
-                div { class: "flex items-center",
-                    input {
-                        class: "flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-16",
-                        id: "start-hour",
-                        placeholder: "08",
-                        r#type: "number",
+                div { class: "flex flex-row justify-between",
+                    div { class: "flex flex-col",
+                        div { class: "flex items-center",
+                            label {
+                                class: "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
+                                r#for: "start-time",
+                                "Start Time"
+                            }
+                        }
+                        div { class: "flex items-center",
+                            input {
+                                class: "{inp_style(start_time)}",
+                                id: "start-time",
+                                placeholder: "08",
+                                r#type: "time",
 
-                        oninput: move |evt| {
-                            start_hour.set(evt.value.parse::<u32>().ok().filter(|hr| *hr < 24));
+                                oninput: move |evt| start_time.set(parse_time(&evt.value))
+                            }
                         }
                     }
-                    span { class: "mx-1", ":" }
-                    input {
-                        class: "flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-16",
-                        id: "start-minute",
-                        placeholder: "00",
-                        r#type: "number",
-                        oninput: move |evt| {
-                            start_minute.set(evt.value.parse::<u32>().ok().filter(|mnt| *mnt < 60));
+                    div { class: "flex flex-col",
+                        div { class: "flex items-center",
+                            label {
+                                class: "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
+                                r#for: "end-time",
+                                "End Time"
+                            }
                         }
-                    }
-                }
-                div { class: "flex items-center",
-                    label {
-                        class: "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
-                        r#for: "end-time",
-                        "End Time"
-                    }
-                }
-                div { class: "flex items-center",
-                    input {
-                        class: "flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-16",
-                        id: "end-hour",
-                        placeholder: "17",
-                        r#type: "number",
-                        oninput: move |evt| {
-                            end_hour.set(evt.value.parse::<u32>().ok().filter(|hr| *hr < 24));
-                        }
-                    }
-                    span { class: "mx-1", ":" }
-                    input {
-                        class: "flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-16",
-                        id: "end-minute",
-                        placeholder: "00",
-                        r#type: "number",
-                        oninput: move |evt| {
-                            end_minute.set(evt.value.parse::<u32>().ok().filter(|mnt| *mnt < 60));
+                        div { class: "flex items-center",
+                            input {
+                                class: "{inp_style(end_time)}",
+                                id: "end-time",
+                                placeholder: "17",
+                                r#type: "time",
+                                oninput: move |evt| {
+                                    end_time.set(parse_time(&evt.value));
+                                    console_log!("End time is now: {:?}", evt.value);
+                                }
+                            }
                         }
                     }
                 }
-                button { class: "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-white hover:bg-primary/90 h-10 px-4 py-2 w-full",
+                button {
+                    class: "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-white hover:bg-primary/90 h-10 px-4 py-2 w-full",
+                    onclick: move |_| {
+                        let (Some(start_time), Some(end_time)) = (*start_time.current(), *end_time.current()) else {
+                            return;
+                        };
+                        let config = Config {
+                            block_time_start: start_time,
+                            block_time_end: end_time,
+                        };
+                        console_log!("{:?}", set_configs(&config));
+                    },
                     "Save"
                 }
             }
@@ -139,6 +147,7 @@ fn show_welcome_screen(cx: Scope) -> Element {
 }
 
 fn show_settings(cx: Scope, config: Config) -> Element {
+    console_log!("from show_settings: {config:?}");
     render!( h1 { "Speaking from show_settings!" } )
 }
 

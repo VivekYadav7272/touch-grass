@@ -4,3 +4,7 @@ to generate the actual CSS file in the output directory.
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.red-border {
+    @apply border-red-500
+}
