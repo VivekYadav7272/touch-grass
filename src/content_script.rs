@@ -1,7 +1,6 @@
 use crate::config;
 use crate::console_log;
 use wasm_bindgen::prelude::*;
-const YT_VIDEO_SECTION: &str = "primary";
 
 #[wasm_bindgen]
 pub fn touch_grass() {
