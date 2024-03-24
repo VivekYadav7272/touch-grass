@@ -1,5 +1,6 @@
+use crate::config;
+use crate::console_log;
 use wasm_bindgen::prelude::*;
-
 const YT_VIDEO_SECTION: &str = "primary";
 
 #[wasm_bindgen]
@@ -11,8 +12,17 @@ pub fn touch_grass() {
         .document()
         .expect("should have a document on window");
 
-    document
-        .get_element_by_id(YT_VIDEO_SECTION)
-        .expect("Couldn't find the `primary` div")
-        .set_inner_html("<h1>🌱\nPADHLE</h1>");
+    let homepage = document.get_elements_by_tag_name("ytd-rich-grid-renderer");
+    let sidebar = document.get_elements_by_tag_name("ytd-watch-next-secondary-results-renderer");
+
+    let distractions = [homepage, sidebar];
+
+    distractions.into_iter().for_each(|distraction| {
+        distraction
+            .item(0)
+            .map(|el| el.set_inner_html("<h1>🌱\nPADHLE</h1>"));
+    });
+
+    let config = config::get_configs().unwrap();
+    console_log!("Config: {config:?}");
 }

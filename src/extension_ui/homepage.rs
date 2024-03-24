@@ -1,8 +1,8 @@
-use std::error::Error;
-
-use crate::console_log;
+use crate::{
+    config::{self, Config, ConfigError},
+    console_log,
+};
 use dioxus::{html::h3, prelude::*};
-use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -11,17 +11,11 @@ pub fn start_app() {
     dioxus_web::launch(app);
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-struct Config {
-    block_time_start: u32, // Time in minutes
-    block_time_end: u32,
-}
-
 fn app(cx: Scope) -> Element {
     // First we need to check if the user has even setup the extension or not.
     // Depending on that, we either render the welcome screen or the normal setting screen.
 
-    let page = match get_configs() {
+    let page = match config::get_configs() {
         Ok(config) => show_settings(cx, config),
         Err(ConfigError::EmptyStorage) => show_welcome_screen(cx),
         Err(ConfigError::StorageNotFound) => render!(
@@ -37,7 +31,7 @@ fn app(cx: Scope) -> Element {
         ),
         Err(ConfigError::CorruptedConfig) => {
             // We need to remove the config and then show the welcome screen
-            remove_configs().expect("Couldn't set the default config");
+            config::remove_configs().expect("Couldn't set the default config");
 
             render!(
                 h3 {
@@ -132,7 +126,7 @@ fn show_welcome_screen(cx: Scope) -> Element {
                             block_time_start: start_time,
                             block_time_end: end_time,
                         };
-                        console_log!("{:?}", set_configs(&config));
+                        console_log!("{:?}", config::set_configs(&config));
                     },
                     "Save"
                 }
@@ -147,66 +141,10 @@ fn show_welcome_screen(cx: Scope) -> Element {
 }
 
 fn show_settings(cx: Scope, config: Config) -> Element {
+    // Idea for this page:
+    // 1. Show the current settings (i.e start and end time)
+    // 2. Allow the user to change the settings by reverting to the previous page.
+    // 3. Show some statistics (hours of YouTube accessed today, etc.)
     console_log!("from show_settings: {config:?}");
     render!( h1 { "Speaking from show_settings!" } )
 }
-
-fn get_configs() -> Result<Config, ConfigError> {
-    web_sys::window()
-        .ok_or(ConfigError::StorageNotFound)?
-        .local_storage()
-        .map_err(|_| ConfigError::WontAllowStorage)?
-        .expect("Calling .local_storage() should never return null/None, according to MDN")
-        .get_item("config")
-        .expect("Calling .get_item() should never throw, only return None if item doesn't exist or the item, according to MDN")
-        .ok_or(ConfigError::EmptyStorage)
-        .and_then(|item| {
-            serde_json::from_str(&item).map_err(|_| ConfigError::CorruptedConfig)
-        })
-}
-
-fn set_configs(config: &Config) -> Result<(), ConfigError> {
-    web_sys::window()
-        .ok_or(ConfigError::StorageNotFound)?
-        .local_storage()
-        .map_err(|_| ConfigError::WontAllowStorage)?
-        .expect("Calling .local_storage() should never return null/None, according to MDN")
-        .set_item(
-            "config",
-            &serde_json::to_string(config).map_err(|_| ConfigError::CorruptedConfig)?,
-        )
-        .map_err(|_| ConfigError::WontAllowStorage) // Either this or QuotaExceeded. Both cases are effectively
-                                                    // that user's actions have denied me this operation, so it's all the same to me.
-}
-
-fn remove_configs() -> Result<(), ConfigError> {
-    web_sys::window()
-        .ok_or(ConfigError::StorageNotFound)?
-        .local_storage()
-        .map_err(|_| ConfigError::WontAllowStorage)?
-        .expect("Calling .local_storage() should never return null/None, according to MDN")
-        .remove_item("config") // NOTE: This method wouldn't throw if key isn't present. It just wouldn't do anything.
-        .map_err(|_| ConfigError::WontAllowStorage)
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-enum ConfigError {
-    WontAllowStorage,
-    EmptyStorage,
-    StorageNotFound,
-    CorruptedConfig,
-}
-
-impl std::fmt::Display for ConfigError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "StorageError: ")?;
-        let msg = match self {
-            ConfigError::WontAllowStorage => "The user has not allowed storage",
-            ConfigError::EmptyStorage => "The storage is empty",
-            ConfigError::StorageNotFound => "The window context/storage context was not found",
-            ConfigError::CorruptedConfig => "The config is corrupted",
-        };
-        writeln!(f, "{msg}")
-    }
-}
-impl Error for ConfigError {}
