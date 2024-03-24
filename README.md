@@ -7,7 +7,7 @@ Currently, it's only tested to work on Firefox, though Chromium support should b
 # Goals
 1) Get till the proof-of-concept stage (add the ability to lock YouTube homepage for a certain duration during the day, and settings for which is only changeable by a password) [IN PROGRESS]
 2) Implement basic usage statistics. [IN PROGRESS]
-3) Write enough Rust in there so that JavaScript doesn't appear as the largest part of the project 😭. [IN PROGRESS]
+3) Write enough Rust in there so that JavaScript doesn't appear as the largest part of the project 😭. [✅]
 
 # Would be nice to have
 1) Categorically remove videos from appearing on your homepage (maybe only blacklist gaming videos, or only whitelist development related videos?)
