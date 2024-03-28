@@ -25,5 +25,12 @@
         "default_icon": "icons/logo_1.ico",
         "default_title": "TouchGrass",
         "default_popup": "homepage.html"
+    },
+    "background": {
+        "scripts": [
+            "background.js"
+        ],
+        "persistent": false,
+        "type": "module"
     }
 }

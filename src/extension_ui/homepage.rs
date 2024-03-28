@@ -1,7 +1,4 @@
-use crate::{
-    config::{self, Config, ConfigError},
-    console_log,
-};
+use crate::{console_log, storage::config};
 use dioxus::{html::h3, prelude::*};
 use wasm_bindgen::prelude::*;
 
@@ -14,7 +11,7 @@ pub fn start_app() {
 fn app(cx: Scope) -> Element {
     // First we need to check if the user has even setup the extension or not.
     // Depending on that, we either render the welcome screen or the normal setting screen.
-
+    use config::ConfigError;
     let page = match config::get_configs() {
         Ok(config) => show_settings(cx, config),
         Err(ConfigError::EmptyStorage) => show_welcome_screen(cx),
@@ -122,7 +119,7 @@ fn show_welcome_screen(cx: Scope) -> Element {
                         let (Some(start_time), Some(end_time)) = (*start_time.current(), *end_time.current()) else {
                             return;
                         };
-                        let config = Config {
+                        let config = config::Config {
                             block_time_start: start_time,
                             block_time_end: end_time,
                         };
@@ -140,7 +137,7 @@ fn show_welcome_screen(cx: Scope) -> Element {
     )
 }
 
-fn show_settings(cx: Scope, config: Config) -> Element {
+fn show_settings(cx: Scope, config: config::Config) -> Element {
     // Idea for this page:
     // 1. Show the current settings (i.e start and end time)
     // 2. Allow the user to change the settings by reverting to the previous page.

@@ -1,5 +1,5 @@
-use crate::config;
 use crate::console_log;
+use crate::storage::config;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
