@@ -8,7 +8,8 @@ pub struct Config {
     pub block_time_end: u32,
 }
 
-// Shim layer for now -> This is supposed to later delegate to a function that knows how to talk with the background script.
+// TODO: Background.js method was a SHAM!! There exists a direct API for storage apparently which I was
+// not able to find. It's the browser.storage.local API.
 
 pub fn get_configs() -> Result<Config, ConfigError> {
     background::get_configs()

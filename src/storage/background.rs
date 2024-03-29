@@ -2,12 +2,6 @@ use super::config::Config;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum Message {
-    Get,
-    Set(Config),
-}
-
 pub fn get_configs() -> Result<Config, ConfigError> {
     web_sys::window()
         .ok_or(ConfigError::StorageNotFound)?
