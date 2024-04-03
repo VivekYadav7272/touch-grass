@@ -1,6 +1,16 @@
-use super::config::*;
+use serde::{Deserialize, Serialize};
+use std::error::Error;
 use wasm_bindgen::JsValue;
 use web_extensions_sys::browser;
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct Config {
+    pub block_time_start: u32, // Time in minutes
+    pub block_time_end: u32,
+}
+
+// TODO: Background.js method was a SHAM!! There exists a direct API for storage apparently which I was
+// not able to find. It's the browser.storage.local API.
 
 pub async fn get_configs() -> Result<Config, ConfigError> {
     let storage = browser().storage().local();
@@ -38,3 +48,25 @@ pub fn remove_configs() -> Result<(), ConfigError> {
         .remove_item("config") // NOTE: This method wouldn't throw if key isn't present. It just wouldn't do anything.
         .map_err(|_| ConfigError::WontAllowStorage)
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ConfigError {
+    WontAllowStorage,
+    EmptyStorage,
+    StorageNotFound,
+    CorruptedConfig,
+}
+
+impl std::fmt::Display for ConfigError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "StorageError: ")?;
+        let msg = match self {
+            ConfigError::WontAllowStorage => "The user has not allowed storage",
+            ConfigError::EmptyStorage => "The storage is empty",
+            ConfigError::StorageNotFound => "The window context/storage context was not found",
+            ConfigError::CorruptedConfig => "The config is corrupted",
+        };
+        writeln!(f, "{msg}")
+    }
+}
+impl Error for ConfigError {}

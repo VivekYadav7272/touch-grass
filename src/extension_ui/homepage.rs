@@ -1,4 +1,4 @@
-use crate::{console_log, storage::config};
+use crate::{config, console_log};
 use dioxus::{html::h3, prelude::*};
 use wasm_bindgen::prelude::*;
 
