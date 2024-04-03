@@ -1,19 +1,18 @@
-use super::config::Config;
-use serde::{Deserialize, Serialize};
-use wasm_bindgen::prelude::*;
+use super::config::*;
+use wasm_bindgen::JsValue;
+use web_extensions_sys::browser;
 
-pub fn get_configs() -> Result<Config, ConfigError> {
-    web_sys::window()
-        .ok_or(ConfigError::StorageNotFound)?
-        .local_storage()
-        .map_err(|_| ConfigError::WontAllowStorage)?
-        .expect("Calling .local_storage() should never return null/None, according to MDN")
-        .get_item("config")
-        .expect("Calling .get_item() should never throw, only return None if item doesn't exist or the item, according to MDN")
-        .ok_or(ConfigError::EmptyStorage)
-        .and_then(|item| {
-            serde_json::from_str(&item).map_err(|_| ConfigError::CorruptedConfig)
-        })
+pub async fn get_configs() -> Result<Config, ConfigError> {
+    let storage = browser().storage().local();
+    let config_json = storage
+        .get(&JsValue::from_str("config"))
+        .await
+        .map_err(|_| ConfigError::EmptyStorage)?;
+
+    config_json
+        .as_string()
+        .and_then(|config| serde_json::from_str(&config).ok())
+        .ok_or(ConfigError::CorruptedConfig)
 }
 
 pub fn set_configs(config: &Config) -> Result<(), ConfigError> {
