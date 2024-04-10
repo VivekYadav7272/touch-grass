@@ -45,7 +45,10 @@ fn app() -> Element {
     let page = page.read().clone().flatten();
 
     match page {
-        Some(page) => rsx! { {page} },
+        Some(page) => rsx! {
+            link { rel: "stylesheet", href: "./output.css" }
+            {page}
+        },
         _ => rsx! { "Loading..." },
     }
 }
