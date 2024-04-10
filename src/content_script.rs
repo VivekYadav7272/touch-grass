@@ -3,7 +3,7 @@ use crate::console_log;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
-pub fn touch_grass() {
+pub async fn touch_grass() {
     console_error_panic_hook::set_once();
 
     let document = web_sys::window()
@@ -22,6 +22,6 @@ pub fn touch_grass() {
             .map(|el| el.set_inner_html("<h1>🌱\nPADHLE</h1>"));
     });
 
-    let config = config::get_configs().unwrap();
+    let config = config::get_configs().await.unwrap();
     console_log!("Config: {config:?}");
 }

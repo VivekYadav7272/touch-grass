@@ -1,4 +1,6 @@
+use crate::{config::storage_types::ConfigSerdeWrapper, console_log};
 use serde::{Deserialize, Serialize};
+use serde_wasm_bindgen as swb;
 use std::error::Error;
 use wasm_bindgen::JsValue;
 use web_extensions_sys::browser;
@@ -9,44 +11,84 @@ pub struct Config {
     pub block_time_end: u32,
 }
 
-// TODO: Background.js method was a SHAM!! There exists a direct API for storage apparently which I was
-// not able to find. It's the browser.storage.local API.
+impl TryFrom<ConfigSerdeWrapper> for Config {
+    type Error = ConfigError;
+
+    fn try_from(value: ConfigSerdeWrapper) -> Result<Self, Self::Error> {
+        match value {
+            ConfigSerdeWrapper::Config(config) => Ok(config),
+            ConfigSerdeWrapper::EmptyStorage(_) => Err(ConfigError::EmptyStorage),
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------------
+mod storage_types {
+    use serde::{Deserialize, Serialize};
+    use serde_wasm_bindgen as swb;
+    use wasm_bindgen::JsValue;
+
+    use super::ConfigError;
+
+    #[derive(Serialize, Deserialize)]
+    pub struct EmptyStruct {}
+
+    #[derive(Serialize, Deserialize)]
+    pub enum ConfigSerdeWrapper {
+        #[serde(rename = "config")]
+        Config(super::Config),
+        #[serde(untagged)]
+        EmptyStorage(EmptyStruct),
+    }
+
+    impl TryFrom<JsValue> for ConfigSerdeWrapper {
+        type Error = ConfigError;
+
+        fn try_from(value: JsValue) -> Result<Self, Self::Error> {
+            let value = swb::from_value(value).map_err(|_| ConfigError::CorruptedConfig)?;
+            Ok(value)
+        }
+    }
+}
+// ---------------------------------------------------------------------------
 
 pub async fn get_configs() -> Result<Config, ConfigError> {
     let storage = browser().storage().local();
-    let config_json = storage
+
+    let config_jsval = storage
         .get(&JsValue::from_str("config"))
         .await
+        .map_err(|_| ConfigError::WontAllowStorage)?;
+
+    let config_wrapper = ConfigSerdeWrapper::try_from(config_jsval)?;
+
+    Ok(Config::try_from(config_wrapper)?)
+}
+
+pub async fn set_configs(config: Config) -> Result<(), ConfigError> {
+    let storage = browser().storage().local();
+
+    let config_jsval = swb::to_value(&ConfigSerdeWrapper::Config(config)).expect(
+        "All types should've been correct because Rust (and its cool static type system(TM)) :)",
+    );
+
+    let config_obj = config_jsval.into();
+
+    let _ = storage
+        .set(&config_obj)
+        .await
+        .map_err(|_| ConfigError::WontAllowStorage)?;
+
+    Ok(())
+}
+
+pub async fn remove_configs() -> Result<(), ConfigError> {
+    let storage = browser().storage().local();
+    let _ = storage
+        .remove(&JsValue::from_str("config"))
+        .await
         .map_err(|_| ConfigError::EmptyStorage)?;
-
-    config_json
-        .as_string()
-        .and_then(|config| serde_json::from_str(&config).ok())
-        .ok_or(ConfigError::CorruptedConfig)
-}
-
-pub fn set_configs(config: &Config) -> Result<(), ConfigError> {
-    web_sys::window()
-        .ok_or(ConfigError::StorageNotFound)?
-        .local_storage()
-        .map_err(|_| ConfigError::WontAllowStorage)?
-        .expect("Calling .local_storage() should never return null/None, according to MDN")
-        .set_item(
-            "config",
-            &serde_json::to_string(config).map_err(|_| ConfigError::CorruptedConfig)?,
-        )
-        .map_err(|_| ConfigError::WontAllowStorage) // Either this or QuotaExceeded. Both cases are effectively
-                                                    // that user's actions have denied me this operation, so it's all the same to me.
-}
-
-pub fn remove_configs() -> Result<(), ConfigError> {
-    web_sys::window()
-        .ok_or(ConfigError::StorageNotFound)?
-        .local_storage()
-        .map_err(|_| ConfigError::WontAllowStorage)?
-        .expect("Calling .local_storage() should never return null/None, according to MDN")
-        .remove_item("config") // NOTE: This method wouldn't throw if key isn't present. It just wouldn't do anything.
-        .map_err(|_| ConfigError::WontAllowStorage)
+    Ok(())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
