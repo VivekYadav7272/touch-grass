@@ -42,7 +42,7 @@ fn app() -> Element {
         }
     });
 
-    let page = page.read().clone().flatten();
+    let page = page().flatten();
 
     match page {
         Some(page) => rsx! {
