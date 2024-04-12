@@ -1,4 +1,4 @@
-use crate::{config::storage_types::ConfigSerdeWrapper, console_log};
+use crate::config::storage_types::ConfigSerdeWrapper;
 use serde::{Deserialize, Serialize};
 use serde_wasm_bindgen as swb;
 use std::error::Error;
@@ -33,6 +33,16 @@ mod storage_types {
     #[derive(Serialize, Deserialize)]
     pub struct EmptyStruct {}
 
+    // Here's why we need to do this:
+    // browser.storage.local.get() returns a JsValue(Object({})), even if the storage is empty.
+    // This is different to how window.localStorage.get() works, where it throws an error if key is not found.
+    // I had previously designed assumed that the storage would throw an error if key is not found.
+    // But actually, we still get a JsValue. Hence, we instead need to match on the JsValue
+    // to decide if it's the case of empty storage or not.
+    // EmptyStruct is a dummy struct that we use to match on the JsValue.
+    // It is untagged because we don't want serde to map ConfigSerdeWrapper::EmptyStorage(EmptyStruct)
+    // to be {"EmptyStorage": {}}. We just want it to be {} (Because otherwise it will look like
+    // JsValue(Object{"EmptyStorage": {}}) which is not what we want. We just want JsValue(Object{})).
     #[derive(Serialize, Deserialize)]
     pub enum ConfigSerdeWrapper {
         #[serde(rename = "config")]
