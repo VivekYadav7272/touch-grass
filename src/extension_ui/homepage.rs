@@ -14,7 +14,7 @@ fn app() -> Element {
     use config::ConfigError;
     let page = use_resource(move || async move {
         match config::get_configs().await {
-            Ok(config) => show_settings(config),
+            Ok(config) => show_settings(Some(config)),
             Err(ConfigError::EmptyStorage) => show_welcome_screen(),
             Err(ConfigError::StorageNotFound) => rsx!(
                 h3 {
@@ -62,8 +62,19 @@ fn parse_time(time: &str) -> Option<u32> {
 }
 
 fn show_welcome_screen() -> Element {
-    let mut start_time: Signal<Option<u32>> = use_signal(|| None);
-    let mut end_time: Signal<Option<u32>> = use_signal(|| None);
+    show_settings(None)
+}
+
+fn show_settings(config: Option<config::Config>) -> Element {
+    // Idea for this page:
+    // 1. Show the current settings (i.e start and end time)
+    // 2. Allow the user to change the settings by reverting to the previous page.
+    // 3. Show some statistics (hours of YouTube accessed today, etc.)
+
+    let mut start_time: Signal<Option<u32>> =
+        use_signal(|| config.as_ref().map(|config| config.block_time_start));
+    let mut end_time: Signal<Option<u32>> =
+        use_signal(|| config.as_ref().map(|config| config.block_time_end));
 
     rsx!(
         div { class: "rounded-lg border bg-card text-card-foreground shadow-sm w-full max-w-sm mx-auto",
@@ -142,12 +153,4 @@ fn show_welcome_screen() -> Element {
             }
         }
     )
-}
-fn show_settings(config: config::Config) -> Element {
-    // Idea for this page:
-    // 1. Show the current settings (i.e start and end time)
-    // 2. Allow the user to change the settings by reverting to the previous page.
-    // 3. Show some statistics (hours of YouTube accessed today, etc.)
-    console_log!("from show_settings: {config:?}");
-    rsx!( h1 { "Speaking from show_settings!" } )
 }
