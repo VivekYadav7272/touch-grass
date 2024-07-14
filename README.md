@@ -5,7 +5,7 @@ The current goals of this project is to only disable the home page of YouTube, s
 Currently, it's only tested to work on Firefox, though Chromium support should be trivial.
 
 ## Goals
-1) Get till the proof-of-concept stage (add the ability to lock YouTube homepage for a certain duration during the day, and settings for which is only changeable by a password) [IN PROGRESS]
+1) Get till the proof-of-concept stage (add the ability to lock YouTube homepage for a certain duration during the day, and settings for which is only changeable by a password) [✅? Password impl remaining]
 2) Implement basic usage statistics. [IN PROGRESS]
 3) Write enough Rust in there so that JavaScript doesn't appear as the largest part of the project 😭. [✅]
 
