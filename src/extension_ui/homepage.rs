@@ -71,10 +71,11 @@ fn show_settings(config: Option<config::Config>) -> Element {
     // 2. Allow the user to change the settings by reverting to the previous page.
     // 3. Show some statistics (hours of YouTube accessed today, etc.)
 
-    let mut start_time: Signal<Option<u32>> =
-        use_signal(|| config.as_ref().map(|config| config.block_time_start));
-    let mut end_time: Signal<Option<u32>> =
-        use_signal(|| config.as_ref().map(|config| config.block_time_end));
+    let block_time_start = config.as_ref().map(|config| config.block_time_start);
+    let block_time_end = config.as_ref().map(|config| config.block_time_end);
+
+    let mut start_time: Signal<Option<u32>> = use_signal(|| block_time_start);
+    let mut end_time: Signal<Option<u32>> = use_signal(|| block_time_end);
 
     rsx!(
         div { class: "rounded-lg border bg-card text-card-foreground shadow-sm w-full max-w-sm mx-auto",
@@ -100,6 +101,9 @@ fn show_settings(config: Option<config::Config>) -> Element {
                                 class: if start_time.read().is_none() { "red-border" },
                                 id: "start-time",
                                 placeholder: "08",
+                                value: if let Some(start_time) = block_time_start {
+                                    format!("{:02}:{:02}", start_time / 60, start_time % 60)
+                                },
                                 r#type: "time",
 
                                 oninput: move |evt| start_time.set(parse_time(&evt.value()))
@@ -120,6 +124,9 @@ fn show_settings(config: Option<config::Config>) -> Element {
                                 class: if end_time.read().is_none() { "red-border" },
                                 id: "end-time",
                                 placeholder: "17",
+                                value: if let Some(end_time) = block_time_end {
+                                    format!("{:02}:{:02}", end_time / 60, end_time % 60)
+                                },
                                 r#type: "time",
                                 oninput: move |evt| {
                                     end_time.set(parse_time(&evt.value()));
