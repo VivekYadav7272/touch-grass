@@ -29,7 +29,7 @@ pub async fn touch_grass() {
     //  Either I:
     //  - check it in blocks of two, i.e (end_time..24*60) or (0..start_time) for this case and another
     //    if block for normal case where start_time <= end_time.
-    //  - or I check if it is NOT in the range (start_time..end_time).
+    //  - or I check if it is NOT in the range (smaller_time..larger_time).
     //  For some reason, I like the second one better, as it can be composed without multiple if-else's,
     //  as done below.
 
