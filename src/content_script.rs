@@ -24,15 +24,19 @@ pub async fn touch_grass() {
     let curr_time = curr_time.get_hours() * 60 + curr_time.get_minutes();
     console_log!("Curr time: {curr_time}");
 
-    // CAREFUL! If start_time > end_time (eg: 10:00PM to 6:00AM)
+    // CAREFUL! If start_time > end_time (eg: start_time=10:00PM, end_time=6:00AM)
     //  then it isn't a simple range-check.
     //  Either I:
-    //  - check it in blocks of two, i.e (end_time..24*60) and (0..start_time)
+    //  - check it in blocks of two, i.e (end_time..24*60) or (0..start_time) for this case and another
+    //    if block for normal case where start_time <= end_time.
     //  - or I check if it is NOT in the range (start_time..end_time).
-    //  For some reason, I like the second one better, as it can be composed without nesting, as done below.
+    //  For some reason, I like the second one better, as it can be composed without multiple if-else's,
+    //  as done below.
 
     let normal_check = config.block_time_start <= config.block_time_end;
-    if normal_check ^ (config.block_time_start..config.block_time_end).contains(&curr_time) {
+    let early_hr = config.block_time_start.min(config.block_time_end);
+    let late_hr = config.block_time_start.max(config.block_time_end);
+    if normal_check ^ (early_hr..late_hr).contains(&curr_time) {
         // Exit out of this script. Let the page load normally.
         return;
     }
