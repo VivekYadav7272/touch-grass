@@ -5,10 +5,24 @@ use std::error::Error;
 use wasm_bindgen::JsValue;
 use web_extensions_sys::browser;
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Config {
     pub block_time_start: u32, // Time in minutes
     pub block_time_end: u32,
+    pub total_usage: u32, // Also in minutes
+}
+
+#[derive(Default)]
+pub struct ConfigBuilder {
+    pub block_time_start: Option<u32>,
+    pub block_time_end: Option<u32>,
+    pub total_usage: Option<u32>,
+}
+
+impl ConfigBuilder {
+    fn new() -> Self {
+        Self::default()
+    }
 }
 
 impl TryFrom<ConfigSerdeWrapper> for Config {
@@ -41,7 +55,7 @@ mod storage_types {
     // to decide if it's the error case or not.
     // EmptyStruct is a dummy struct that we use to match on the JsValue.
     // It is untagged because we don't want serde to map ConfigSerdeWrapper::EmptyStorage(EmptyStruct)
-    // to be {"EmptyStorage": {}}. We just want it to be {} (Because otherwise it will look like
+    // to {"EmptyStorage": {}}. We just want it to be {} (Because otherwise it will look like
     // JsValue(Object{"EmptyStorage": {}}) which is not what we want. We just want JsValue(Object{})).
     #[derive(Serialize, Deserialize)]
     pub enum ConfigSerdeWrapper {
@@ -62,7 +76,7 @@ mod storage_types {
 }
 // ---------------------------------------------------------------------------
 
-pub async fn get_configs() -> Result<Config, ConfigError> {
+pub async fn get_config() -> Result<Config, ConfigError> {
     let storage = browser().storage().local();
 
     let config_jsval = storage
@@ -75,7 +89,7 @@ pub async fn get_configs() -> Result<Config, ConfigError> {
     Ok(Config::try_from(config_wrapper)?)
 }
 
-pub async fn set_configs(config: Config) -> Result<(), ConfigError> {
+pub async fn set_config(config: Config) -> Result<(), ConfigError> {
     let storage = browser().storage().local();
 
     let config_jsval = swb::to_value(&ConfigSerdeWrapper::Config(config)).expect(
@@ -92,13 +106,31 @@ pub async fn set_configs(config: Config) -> Result<(), ConfigError> {
     Ok(())
 }
 
-pub async fn remove_configs() -> Result<(), ConfigError> {
+pub async fn remove_config() -> Result<(), ConfigError> {
     let storage = browser().storage().local();
     let _ = storage
         .remove(&JsValue::from_str("config"))
         .await
         .map_err(|_| ConfigError::EmptyStorage)?;
     Ok(())
+}
+
+pub async fn update_config(config_builder: ConfigBuilder) -> Result<Config, ConfigError> {
+    let config = get_config().await?;
+
+    let updated_config = Config {
+        block_time_start: config_builder
+            .block_time_start
+            .unwrap_or(config.block_time_start),
+        block_time_end: config_builder
+            .block_time_end
+            .unwrap_or(config.block_time_end),
+        total_usage: config_builder.total_usage.unwrap_or(config.total_usage),
+    };
+
+    set_config(updated_config.clone()).await?;
+
+    Ok(updated_config)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]

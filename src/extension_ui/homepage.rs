@@ -13,7 +13,7 @@ fn app() -> Element {
     // Depending on that, we either render the welcome screen or the normal setting screen.
     use config::ConfigError;
     let page = use_resource(move || async move {
-        match config::get_configs().await {
+        match config::get_config().await {
             Ok(config) => show_settings(Some(config)),
             Err(ConfigError::EmptyStorage) => show_welcome_screen(),
             Err(ConfigError::StorageNotFound) => rsx!(
@@ -29,7 +29,7 @@ fn app() -> Element {
             ),
             Err(ConfigError::CorruptedConfig) => {
                 // We need to remove the config and then show the welcome screen
-                config::remove_configs()
+                config::remove_config()
                     .await
                     .expect("Couldn't set the default config");
 
@@ -42,14 +42,13 @@ fn app() -> Element {
         }
     });
 
-    let page = page().flatten();
-
-    match page {
-        Some(page) => rsx! {
+    if let Some(page) = page().flatten() {
+        rsx! {
             link { rel: "stylesheet", href: "./output.css" }
             {page}
-        },
-        _ => rsx! { "Loading..." },
+        }
+    } else {
+        rsx! { "Loading..." }
     }
 }
 
@@ -144,11 +143,12 @@ fn show_settings(config: Option<config::Config>) -> Element {
                             return;
                         };
 
-                        let config = config::Config {
-                            block_time_start: start_time,
-                            block_time_end: end_time,
+                        let config = config::ConfigBuilder {
+                            block_time_start: Some(start_time),
+                            block_time_end: Some(end_time),
+                            ..Default::default()
                         };
-                        spawn(async move { config::set_configs(config).await.expect("Couldn't set the config") });
+                        spawn(async move { config::update_config(config).await.expect("Couldn't set the config"); });
                     },
                     "Save"
                 }
