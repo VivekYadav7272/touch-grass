@@ -12,8 +12,12 @@ pub async fn touch_grass() {
 
     let config = match config::get_config().await {
         Ok(config) => config,
+        Err(e @ ConfigError::EmptyStorage) => {
+            console_log!("Not touching grass because no time slot set: {e}");
+            return;
+        }
         Err(e) => {
-            console_log!("Error: {e}");
+            console_log!("Error while trying to touch grass: {e}");
             return;
         }
     };

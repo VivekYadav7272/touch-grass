@@ -1,4 +1,4 @@
-use crate::config::storage_types::ConfigSerdeWrapper;
+use crate::{config::storage_types::ConfigSerdeWrapper, console_log};
 use serde::{Deserialize, Serialize};
 use serde_wasm_bindgen as swb;
 use std::error::Error;
@@ -92,6 +92,7 @@ pub async fn get_config() -> Result<Config, ConfigError> {
 pub async fn set_config(config: Config) -> Result<(), ConfigError> {
     let storage = browser().storage().local();
 
+    console_log!("So far so good!");
     let config_jsval = swb::to_value(&ConfigSerdeWrapper::Config(config)).expect(
         "All types should've been correct because Rust (and its cool static type system(TM)) :)",
     );
@@ -116,7 +117,7 @@ pub async fn remove_config() -> Result<(), ConfigError> {
 }
 
 pub async fn update_config(config_builder: ConfigBuilder) -> Result<Config, ConfigError> {
-    let config = get_config().await?;
+    let config = get_config().await.unwrap_or(Default::default());
 
     let updated_config = Config {
         block_time_start: config_builder
