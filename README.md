@@ -6,7 +6,7 @@ Currently, it's only tested to work on Firefox, though Chromium support should b
 
 ## Goals
 - Get till the proof-of-concept stage (add the ability to lock YouTube homepage for a certain duration during the day, and settings for which is only changeable by a password) [✅? Password impl remaining]
-- Implement basic usage statistics. [IN PROGRESS]
+- Implement basic usage statistics. [✅? Time is being tracked rn]
 - Write enough Rust in there so that JavaScript doesn't appear as the largest part of the project 😭. [✅]
 
 ## Would be nice to have

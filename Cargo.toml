@@ -1,6 +1,6 @@
 [package]
 name = "touch-grass"
-version = "0.1.0"
+version = "0.5.0"
 edition = "2021"
 description = "A tool that helps you with your YouTube addiction."
 license = "MIT"
@@ -20,7 +20,7 @@ serde-wasm-bindgen = "0.6.5"
 wasm-bindgen = "0.2.87"
 wasm-bindgen-futures = "0.4.42"
 web-extensions-sys = { version = "0.4.1", features = ["firefox"] }
-web-sys = { version = "0.3.64", features = [
+web-sys = { version = "0.3.69", features = [
     "Window",
     "Document",
     "Element",
