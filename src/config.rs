@@ -12,19 +12,6 @@ pub struct Config {
     pub total_usage: u32, // Also in minutes
 }
 
-#[derive(Default)]
-pub struct ConfigBuilder {
-    pub block_time_start: Option<u32>,
-    pub block_time_end: Option<u32>,
-    pub total_usage: Option<u32>,
-}
-
-impl ConfigBuilder {
-    fn new() -> Self {
-        Self::default()
-    }
-}
-
 impl TryFrom<ConfigSerdeWrapper> for Config {
     type Error = ConfigError;
 
@@ -116,22 +103,19 @@ pub async fn remove_config() -> Result<(), ConfigError> {
     Ok(())
 }
 
-pub async fn update_config(config_builder: ConfigBuilder) -> Result<Config, ConfigError> {
-    let config = get_config().await.unwrap_or(Default::default());
+pub async fn update_config(f: impl FnOnce(&mut Config)) -> Result<Config, ConfigError> {
+    let mut config = get_config().await.or_else(|err| {
+        if err == ConfigError::EmptyStorage {
+            Ok(Default::default())
+        } else {
+            Err(err)
+        }
+    })?;
 
-    let updated_config = Config {
-        block_time_start: config_builder
-            .block_time_start
-            .unwrap_or(config.block_time_start),
-        block_time_end: config_builder
-            .block_time_end
-            .unwrap_or(config.block_time_end),
-        total_usage: config_builder.total_usage.unwrap_or(config.total_usage),
-    };
+    f(&mut config);
+    set_config(config.clone()).await?;
 
-    set_config(updated_config.clone()).await?;
-
-    Ok(updated_config)
+    Ok(config)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]

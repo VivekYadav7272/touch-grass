@@ -1,4 +1,4 @@
-use crate::config::{self, Config, ConfigBuilder, ConfigError};
+use crate::config::{self, Config, ConfigError};
 use crate::console_log;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
@@ -67,9 +67,8 @@ pub async fn touch_grass() {
  * but rather programmtically via Rust code only. Then, I can bypass JS glue code.
  */
 async fn record_watch_time(document: &web_sys::Window) -> Result<(), ConfigError> {
-    config::update_config(ConfigBuilder {
-        total_usage: Some(1),
-        ..Default::default()
+    config::update_config(|config| {
+        config.total_usage = 1;
     })
     .await?;
 
@@ -89,14 +88,13 @@ async fn record_watch_time(document: &web_sys::Window) -> Result<(), ConfigError
 }
 
 async fn increment_total_usage() {
-    let old_config = config::get_config().await.unwrap_or(Config::default());
-    let new_config = Config {
-        total_usage: old_config.total_usage + 1,
-        ..old_config
-    };
     // WHY .unwrap(): I already have meaningful messages for the errors that're going to be propagated.
     // No need to muddle it with a generic-ass message again.
-    config::set_config(new_config).await.unwrap();
+    config::update_config(|config| {
+        config.total_usage += 1;
+    })
+    .await
+    .unwrap();
 }
 
 fn remove_distractions(document: &web_sys::Document) {

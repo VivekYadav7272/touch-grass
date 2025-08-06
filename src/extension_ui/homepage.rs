@@ -143,12 +143,10 @@ fn show_settings(config: Option<config::Config>) -> Element {
                             return;
                         };
 
-                        let config = config::ConfigBuilder {
-                            block_time_start: Some(start_time),
-                            block_time_end: Some(end_time),
-                            ..Default::default()
-                        };
-                        spawn(async move { config::update_config(config).await.expect("Couldn't set the config"); });
+                        spawn(async move { config::update_config(|config| {
+                            config.block_time_start = start_time;
+                            config.block_time_end = end_time;
+                        }).await.expect("Couldn't set the config"); });
                     },
                     "Save"
                 }
