@@ -17,7 +17,7 @@ pub async fn touch_grass() {
             return;
         }
         Err(e) => {
-            console_log!("Error while trying to touch grass: {e}");
+            console_log!("Error while getting config: {e}");
             return;
         }
     };
@@ -26,10 +26,6 @@ pub async fn touch_grass() {
     let curr_time = js_sys::Date::new_0();
     let curr_time = curr_time.get_hours() * 60 + curr_time.get_minutes();
     console_log!("Curr time: {curr_time}");
-
-    record_watch_time(&window)
-        .await
-        .expect("Couldn't start recording watch statistics");
 
     // CAREFUL! If start_time > end_time (eg: start_time=10:00PM, end_time=6:00AM)
     //  then it isn't a simple range-check.
@@ -47,6 +43,10 @@ pub async fn touch_grass() {
         return;
     }
 
+    record_watch_time(&window)
+        .await
+        .expect("Couldn't start recording watch statistics");
+
     remove_distractions(&document);
 }
 
@@ -58,11 +58,13 @@ pub async fn touch_grass() {
  * that is somehow called when the page is closed (maybe some "run_at" attribute in manifest.json).
  * The reason I've decided not to do that:
  * - I'd need to add yet another JS binding file because ManifestV2 can't directly
- * call into .wasm (afaik), and needs a glue JS file; which will then call into a disjointed Rust file,
+ * call into .wasm (afaik) and needs a glue JS file; which will then call into a disjointed Rust file,
  * which would need to be included in the module (for LSP to work).
  * but wouldn't actually be related to the functioning of the module. This incrementally
  * makes the project feel more confusing when files are grouped together not by functionality
  * but by nature of language.
+ * An alternative that I've not explored is if there's a way to do it at runtime (not describing it in manifest.json)
+ * but rather programmtically via Rust code only. Then, I can bypass JS glue code.
  */
 async fn record_watch_time(document: &web_sys::Window) -> Result<(), ConfigError> {
     config::update_config(ConfigBuilder {
@@ -73,8 +75,6 @@ async fn record_watch_time(document: &web_sys::Window) -> Result<(), ConfigError
 
     let closure = Closure::<dyn Fn()>::new(|| spawn_local(increment_total_usage()));
 
-    // TODO: Impl a global error enum and refactor ConfigError to be that Error type.
-    // And yes then create one for this situation.
     document
         .set_interval_with_callback_and_timeout_and_arguments_0(
             closure.as_ref().unchecked_ref(),
@@ -82,6 +82,8 @@ async fn record_watch_time(document: &web_sys::Window) -> Result<(), ConfigError
         )
         .expect("Failed to setInterval the total usage tracker.");
 
+    // Leaking memory here is fine, because this closure is supposed to live until the end of the page
+    // anyways, as it belongs into a setInterval function.
     closure.forget();
     Ok(())
 }
