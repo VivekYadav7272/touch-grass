@@ -24,22 +24,9 @@ pub async fn touch_grass() {
     console_log!("Config: {config:?}");
 
     let curr_time = js_sys::Date::new_0();
-    let curr_time = curr_time.get_hours() * 60 + curr_time.get_minutes();
-    console_log!("Curr time: {curr_time}");
-
-    // CAREFUL! If start_time > end_time (eg: start_time=10:00PM, end_time=6:00AM)
-    //  then it isn't a simple range-check.
-    //  Either I:
-    //  - check it in blocks of two, i.e if (end_time..24*60) || (0..start_time) for this case and another
-    //    if block for normal case where start_time <= end_time.
-    //  - or I check if it is NOT in the range (smaller_time..larger_time).
-    //  For some reason, I like the second one better, as it can be composed without multiple if-else's,
-    //  as done below.
-    let is_normal_check = config.block_time_start <= config.block_time_end;
-    let early_hr = config.block_time_start.min(config.block_time_end);
-    let late_hr = config.block_time_start.max(config.block_time_end);
-    if is_normal_check ^ (early_hr..late_hr).contains(&curr_time) {
-        // Exit out of this script. Let the page load normally.
+    if !(within_active_time_window(&config, &curr_time)
+        && within_active_day_window(&config, &curr_time))
+    {
         return;
     }
 
@@ -50,10 +37,38 @@ pub async fn touch_grass() {
     remove_distractions(&document);
 }
 
+fn within_active_time_window(config: &Config, curr_time: &js_sys::Date) -> bool {
+    let curr_time = curr_time.get_hours() * 60 + curr_time.get_minutes();
+    console_log!("Curr time: {curr_time}");
+    // CAREFUL! If start_time > end_time (eg: start_time=10:00PM, end_time=6:00AM)
+    //  then it isn't a simple range-check.
+    //  Either I:
+    //  - handle both cases separately, i.e case start_time > end_time: if (end_time..24*60) || (0..start_time) and
+    //    case start_time <= end_time: another if block for normal case where start_time <= end_time.
+    //  - handle it in one go: chec if time is NOT in the range (smaller_time..larger_time).
+    //  For some reason, I like the second one better, as it can be composed without multiple if-else's,
+    //  as done below.
+    let is_normal_check = config.block_time_start <= config.block_time_end;
+    let early_hr = config.block_time_start.min(config.block_time_end);
+    let late_hr = config.block_time_start.max(config.block_time_end);
+    let outside_time_window = is_normal_check ^ (early_hr..late_hr).contains(&curr_time);
+
+    return !outside_time_window;
+}
+
+fn within_active_day_window(config: &Config, curr_time: &js_sys::Date) -> bool {
+    // Sunday is zero. Fuck that, why does it start with the weekend?
+    let curr_day = curr_time.get_day();
+    const NUM_DAYS_IN_WEEK: u32 = 7;
+    let curr_day = (curr_day + NUM_DAYS_IN_WEEK - 1) % NUM_DAYS_IN_WEEK;
+
+    (config.active_days & (1 << curr_day)) != 0
+}
+
 /**
  * Currently I've decided to update the watch time every minute.
  * Of course this means the watch time is always off by a maximum of 1 minute.
- * Another alternative would be to have a `start_recording()` function
+ * Another alternative would be to have a `start_recording` function
  * that just simply logs in the current time, and a `stop_recording()` function
  * that is somehow called when the page is closed (maybe some "run_at" attribute in manifest.json).
  * The reason I've decided not to do that:

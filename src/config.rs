@@ -10,6 +10,7 @@ pub struct Config {
     pub block_time_start: u32, // Time in minutes
     pub block_time_end: u32,
     pub total_usage: u32, // Also in minutes
+    pub active_days: u8,  // bitmap of active days
 }
 
 impl TryFrom<ConfigSerdeWrapper> for Config {
