@@ -1,5 +1,6 @@
 /target
 /Cargo.lock
 /.vscode
-/todo_list.txt
+todo.md
+node_modules
 ./extension/output.css
