@@ -140,6 +140,38 @@ fn show_settings(storage: Option<config::Storage>) -> Element {
                         }
                     }
                 }
+                div {
+                    label {
+                        class: "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
+                        r#for: "day-selector",
+                        "Day of the week"
+                    }
+                    select {
+                        class: "flex w-full rounded-md border border-input bg-background mt-2 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+                        id: "day-selector",
+                        multiple: true,
+                        onchange: move |evt| {
+                            let mut new_active_days = 0u8;
+                            for (day_str, _) in evt.data.values() {
+                                if let Ok(day_idx) = day_str.parse::<u8>() {
+                                    new_active_days |= 1 << day_idx;
+                                }
+                            }
+                            config_signal.write().get_or_insert_default().active_days = new_active_days;
+                            console_log!("Active days are now: {new_active_days:?}");
+                        },
+                        {
+                            let days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+                            days_of_week.into_iter().enumerate().map(|(i, day)| rsx! {
+                                option {
+                                    value: "{i}",
+                                    selected: (config_signal.read().as_ref().map(|c| c.active_days).unwrap_or(0) & (1 << i)) != 0,
+                                    "{day}"
+                                }
+                            })
+                        }
+                    }
+                }
                 button {
                     class: "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-white hover:bg-primary/90 h-10 px-4 py-2 w-full",
                     onclick: move |_| {
