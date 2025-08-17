@@ -1,4 +1,4 @@
-use crate::{config::storage_types::ConfigSerdeWrapper, console_log};
+use crate::{config::storage_types::StorageSerdeWrapper, console_log};
 use serde::{Deserialize, Serialize};
 use serde_wasm_bindgen as swb;
 use std::error::Error;
@@ -9,28 +9,48 @@ use web_extensions_sys::browser;
 pub struct Config {
     pub block_time_start: u32, // Time in minutes
     pub block_time_end: u32,
-    pub total_usage: u32, // Also in minutes
-    pub active_days: u8,  // bitmap of active days
+    pub active_days: u8, // bitmap of active days
 }
 
-impl TryFrom<ConfigSerdeWrapper> for Config {
-    type Error = ConfigError;
+impl Config {
+    pub async fn get_config() -> Result<Config, StorageError> {
+        Ok(get_storage().await?.user_config)
+    }
 
-    fn try_from(value: ConfigSerdeWrapper) -> Result<Self, Self::Error> {
-        match value {
-            ConfigSerdeWrapper::Config(config) => Ok(config),
-            ConfigSerdeWrapper::EmptyStorage(_) => Err(ConfigError::EmptyStorage),
-        }
+    pub async fn flush_config(&self) -> Result<(), StorageError> {
+        update_storage(|storage| {
+            storage.user_config = self.clone();
+        })
+        .await?;
+        Ok(())
     }
 }
 
+pub use storage_types::Storage;
+
 // ----------------------------------------------------------------------------------
 mod storage_types {
+    use super::*;
     use serde::{Deserialize, Serialize};
     use serde_wasm_bindgen as swb;
     use wasm_bindgen::JsValue;
 
-    use super::ConfigError;
+    #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
+    pub struct Storage {
+        pub user_config: Config,
+        pub total_usage: u32,
+    }
+
+    impl TryFrom<StorageSerdeWrapper> for Storage {
+        type Error = StorageError;
+
+        fn try_from(value: StorageSerdeWrapper) -> Result<Self, Self::Error> {
+            match value {
+                StorageSerdeWrapper::Storage(storage) => Ok(storage),
+                StorageSerdeWrapper::EmptyStorage(_) => Err(StorageError::EmptyStorage),
+            }
+        }
+    }
 
     #[derive(Serialize, Deserialize)]
     pub struct EmptyStruct {}
@@ -46,67 +66,67 @@ mod storage_types {
     // to {"EmptyStorage": {}}. We just want it to be {} (Because otherwise it will look like
     // JsValue(Object{"EmptyStorage": {}}) which is not what we want. We just want JsValue(Object{})).
     #[derive(Serialize, Deserialize)]
-    pub enum ConfigSerdeWrapper {
+    pub enum StorageSerdeWrapper {
         #[serde(rename = "config")]
-        Config(super::Config),
+        Storage(Storage),
         #[serde(untagged)]
         EmptyStorage(EmptyStruct),
     }
 
-    impl TryFrom<JsValue> for ConfigSerdeWrapper {
-        type Error = ConfigError;
+    impl TryFrom<JsValue> for StorageSerdeWrapper {
+        type Error = StorageError;
 
         fn try_from(value: JsValue) -> Result<Self, Self::Error> {
-            let value = swb::from_value(value).map_err(|_| ConfigError::CorruptedConfig)?;
+            let value = swb::from_value(value).map_err(|_| StorageError::CorruptedConfig)?;
             Ok(value)
         }
     }
 }
 // ---------------------------------------------------------------------------
 
-pub async fn get_config() -> Result<Config, ConfigError> {
+pub async fn get_storage() -> Result<Storage, StorageError> {
     let storage = browser().storage().local();
 
     let config_jsval = storage
         .get(&JsValue::from_str("config"))
         .await
-        .map_err(|_| ConfigError::WontAllowStorage)?;
+        .map_err(|_| StorageError::WontAllowStorage)?;
 
-    let config_wrapper = ConfigSerdeWrapper::try_from(config_jsval)?;
+    let config_wrapper = StorageSerdeWrapper::try_from(config_jsval)?;
 
-    Ok(Config::try_from(config_wrapper)?)
+    Ok(Storage::try_from(config_wrapper)?)
 }
 
-pub async fn set_config(config: Config) -> Result<(), ConfigError> {
-    let storage = browser().storage().local();
+pub async fn set_storage(storage: Storage) -> Result<(), StorageError> {
+    let browser_storage = browser().storage().local();
 
-    console_log!("So far so good!");
-    let config_jsval = swb::to_value(&ConfigSerdeWrapper::Config(config)).expect(
+    console_log!("[DEBUG]: browser_storage retrieved!");
+    let config_jsval = swb::to_value(&StorageSerdeWrapper::Storage(storage)).expect(
         "All types should've been correct because Rust (and its cool static type system(TM)) :)",
     );
 
     let config_obj = config_jsval.into();
 
-    let _ = storage
+    let _ = browser_storage
         .set(&config_obj)
         .await
-        .map_err(|_| ConfigError::WontAllowStorage)?;
+        .map_err(|_| StorageError::WontAllowStorage)?;
 
     Ok(())
 }
 
-pub async fn remove_config() -> Result<(), ConfigError> {
+pub async fn remove_storage() -> Result<(), StorageError> {
     let storage = browser().storage().local();
     let _ = storage
         .remove(&JsValue::from_str("config"))
         .await
-        .map_err(|_| ConfigError::EmptyStorage)?;
+        .map_err(|_| StorageError::EmptyStorage)?;
     Ok(())
 }
 
-pub async fn update_config(f: impl FnOnce(&mut Config)) -> Result<Config, ConfigError> {
-    let mut config = get_config().await.or_else(|err| {
-        if err == ConfigError::EmptyStorage {
+pub async fn update_storage(f: impl FnOnce(&mut Storage)) -> Result<Storage, StorageError> {
+    let mut config = get_storage().await.or_else(|err| {
+        if err == StorageError::EmptyStorage {
             Ok(Default::default())
         } else {
             Err(err)
@@ -114,29 +134,29 @@ pub async fn update_config(f: impl FnOnce(&mut Config)) -> Result<Config, Config
     })?;
 
     f(&mut config);
-    set_config(config.clone()).await?;
+    set_storage(config.clone()).await?;
 
     Ok(config)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum ConfigError {
+pub enum StorageError {
     WontAllowStorage,
     EmptyStorage,
     StorageNotFound,
     CorruptedConfig,
 }
 
-impl std::fmt::Display for ConfigError {
+impl std::fmt::Display for StorageError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "StorageError: ")?;
         let msg = match self {
-            ConfigError::WontAllowStorage => "The user has not allowed storage",
-            ConfigError::EmptyStorage => "The storage is empty",
-            ConfigError::StorageNotFound => "The window context/storage context was not found",
-            ConfigError::CorruptedConfig => "The config is corrupted",
+            StorageError::WontAllowStorage => "The user has not allowed storage",
+            StorageError::EmptyStorage => "The storage is empty",
+            StorageError::StorageNotFound => "The window context/storage context was not found",
+            StorageError::CorruptedConfig => "The config is corrupted",
         };
         writeln!(f, "{msg}")
     }
 }
-impl Error for ConfigError {}
+impl Error for StorageError {}

@@ -1,4 +1,4 @@
-use crate::config::{self, Config, ConfigError};
+use crate::config::{self, Config, StorageError};
 use crate::console_log;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
@@ -10,23 +10,24 @@ pub async fn touch_grass() {
     let window = web_sys::window().expect("no global `window` exists");
     let document = window.document().expect("should have a document on window");
 
-    let config = match config::get_config().await {
-        Ok(config) => config,
-        Err(e @ ConfigError::EmptyStorage) => {
+    let storage = match config::get_storage().await {
+        Ok(storage) => storage,
+        Err(e @ StorageError::EmptyStorage) => {
             console_log!("Not touching grass because no time slot set: {e}");
             return;
         }
         Err(e) => {
-            console_log!("Error while getting config: {e}");
+            console_log!("Error while getting storage: {e}");
             return;
         }
     };
-    console_log!("Config: {config:?}");
+    console_log!("Storage: {storage:?}");
 
     let curr_time = js_sys::Date::new_0();
-    if !(within_active_time_window(&config, &curr_time)
-        && within_active_day_window(&config, &curr_time))
+    if !(within_active_time_window(&storage.user_config, &curr_time)
+        && within_active_day_window(&storage.user_config, &curr_time))
     {
+        console_log!("Not within the active window, returning..");
         return;
     }
 
@@ -81,9 +82,9 @@ fn within_active_day_window(config: &Config, curr_time: &js_sys::Date) -> bool {
  * An alternative that I've not explored is if there's a way to do it at runtime (not describing it in manifest.json)
  * but rather programmtically via Rust code only. Then, I can bypass JS glue code.
  */
-async fn record_watch_time(document: &web_sys::Window) -> Result<(), ConfigError> {
-    config::update_config(|config| {
-        config.total_usage = 1;
+async fn record_watch_time(document: &web_sys::Window) -> Result<(), StorageError> {
+    config::update_storage(|storage| {
+        storage.total_usage = 1;
     })
     .await?;
 
@@ -105,8 +106,8 @@ async fn record_watch_time(document: &web_sys::Window) -> Result<(), ConfigError
 async fn increment_total_usage() {
     // WHY .unwrap(): I already have meaningful messages for the errors that're going to be propagated.
     // No need to muddle it with a generic-ass message again.
-    config::update_config(|config| {
-        config.total_usage += 1;
+    config::update_storage(|storage| {
+        storage.total_usage += 1;
     })
     .await
     .unwrap();

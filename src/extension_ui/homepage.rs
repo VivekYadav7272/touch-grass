@@ -11,25 +11,25 @@ pub fn start_app() {
 fn app() -> Element {
     // First we need to check if the user has even setup the extension or not.
     // Depending on that, we either render the welcome screen or the normal setting screen.
-    use config::ConfigError;
+    use config::StorageError;
     let page = use_resource(move || async move {
-        match config::get_config().await {
+        match config::get_storage().await {
             Ok(config) => show_settings(Some(config)),
-            Err(ConfigError::EmptyStorage) => show_welcome_screen(),
-            Err(ConfigError::StorageNotFound) => rsx!(
+            Err(StorageError::EmptyStorage) => show_welcome_screen(),
+            Err(StorageError::StorageNotFound) => rsx!(
                 h3 {
                     "Storage bucket not found! :( It either seems like you are either using a very old browser
                     or you're not running it in one"
                 }
             ),
-            Err(ConfigError::WontAllowStorage) => rsx!(
+            Err(StorageError::WontAllowStorage) => rsx!(
                 h3 {
                     "You need to allow storage for this extension to work!"
                 }
             ),
-            Err(ConfigError::CorruptedConfig) => {
+            Err(StorageError::CorruptedConfig) => {
                 // We need to remove the config and then show the welcome screen
-                config::remove_config()
+                config::remove_storage()
                     .await
                     .expect("Couldn't set the default config");
 
@@ -64,17 +64,15 @@ fn show_welcome_screen() -> Element {
     show_settings(None)
 }
 
-fn show_settings(config: Option<config::Config>) -> Element {
+fn show_settings(storage: Option<config::Storage>) -> Element {
     // Idea for this page:
     // 1. Show the current settings (i.e start and end time)
     // 2. Allow the user to change the settings by reverting to the previous page.
     // 3. Show some statistics (hours of YouTube accessed today, etc.)
 
-    let block_time_start = config.as_ref().map(|config| config.block_time_start);
-    let block_time_end = config.as_ref().map(|config| config.block_time_end);
+    let config = storage.map(|s| s.user_config);
 
-    let mut start_time: Signal<Option<u32>> = use_signal(|| block_time_start);
-    let mut end_time: Signal<Option<u32>> = use_signal(|| block_time_end);
+    let mut config_signal: Signal<Option<config::Config>> = use_signal(|| config);
 
     rsx!(
         div { class: "rounded-lg border bg-card text-card-foreground shadow-sm w-full max-w-sm mx-auto",
@@ -97,15 +95,20 @@ fn show_settings(config: Option<config::Config>) -> Element {
                         div { class: "flex items-center",
                             input {
                                 class: "flex h-10 rounded-md border border-input bg-background mt-2 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-23",
-                                class: if start_time.read().is_none() { "red-border" },
+                                class: if config_signal.read().is_none() { "red-border" },
                                 id: "start-time",
                                 placeholder: "08",
-                                value: if let Some(start_time) = block_time_start {
+                                value: if let Some(start_time) = config_signal.read().as_ref().map(|c| c.block_time_start) {
                                     format!("{:02}:{:02}", start_time / 60, start_time % 60)
                                 },
                                 r#type: "time",
 
-                                oninput: move |evt| start_time.set(parse_time(&evt.value()))
+                                oninput: move |evt| {
+                                    if let Some(time) = parse_time(&evt.value()) {
+                                        config_signal.write().get_or_insert_default().block_time_start = time;
+                                        console_log!("Start time is now: {time:?}");
+                                    }
+                                },
                             }
                         }
                     }
@@ -120,16 +123,18 @@ fn show_settings(config: Option<config::Config>) -> Element {
                         div { class: "flex items-center",
                             input {
                                 class: "flex h-10 rounded-md border border-input bg-background mt-2 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-23",
-                                class: if end_time.read().is_none() { "red-border" },
+                                class: if config_signal.read().is_none() { "red-border" },
                                 id: "end-time",
                                 placeholder: "17",
-                                value: if let Some(end_time) = block_time_end {
+                                value: if let Some(end_time) = config_signal.read().as_ref().map(|c| c.block_time_end) {
                                     format!("{:02}:{:02}", end_time / 60, end_time % 60)
                                 },
                                 r#type: "time",
                                 oninput: move |evt| {
-                                    end_time.set(parse_time(&evt.value()));
-                                    console_log!("End time is now: {:?}", evt.value());
+                                    if let Some(time) = parse_time(&evt.value()) {
+                                        config_signal.write().get_or_insert_default().block_time_end = time;
+                                        console_log!("End time is now: {time:?}");
+                                    }
                                 }
                             }
                         }
@@ -138,15 +143,11 @@ fn show_settings(config: Option<config::Config>) -> Element {
                 button {
                     class: "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-white hover:bg-primary/90 h-10 px-4 py-2 w-full",
                     onclick: move |_| {
-
-                        let (Some(start_time), Some(end_time)) = (*start_time.read(), *end_time.read()) else {
-                            return;
-                        };
-
-                        spawn(async move { config::update_config(|config| {
-                            config.block_time_start = start_time;
-                            config.block_time_end = end_time;
-                        }).await.expect("Couldn't set the config"); });
+                        spawn(async move {
+                            if let Some(config) = config_signal.read().as_ref() {
+                                config.flush_config().await.unwrap();
+                            }
+                        });
                     },
                     "Save"
                 }
