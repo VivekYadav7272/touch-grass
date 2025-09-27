@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{config, console_log};
 use dioxus::prelude::*;
 use wasm_bindgen::prelude::*;
@@ -151,14 +153,14 @@ fn show_settings(storage: Option<config::Storage>) -> Element {
                         id: "day-selector",
                         multiple: true,
                         onchange: move |evt| {
-                            let mut new_active_days = 0u8;
-                            for (day_str, _) in evt.data.values() {
-                                if let Ok(day_idx) = day_str.parse::<u8>() {
-                                    new_active_days |= 1 << day_idx;
-                                }
-                            }
+                            console_log!("[DEBUG]: evt.data.values(): {:?}", evt.data.values());
+                            let new_active_days = get_selected_days(&evt.data.values()).unwrap_or_else(|| {
+                                console_log!("[ERROR]: Did not expect to encounter invalid days bitmap! Defaulting to no day selected");
+                                0
+                            });
+
                             config_signal.write().get_or_insert_default().active_days = new_active_days;
-                            console_log!("Active days are now: {new_active_days:?}");
+                            console_log!("[DEBUG]: Active days are now: {new_active_days:?}");
                         },
                         {
                             let days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -191,4 +193,17 @@ fn show_settings(storage: Option<config::Storage>) -> Element {
             }
         }
     )
+}
+
+fn get_selected_days(data: &HashMap<String, FormValue>) -> Option<u8> {
+    // Selector has a bunch of `<option..></option>`s
+    let form_values = data.get("options")?;
+    let day_inds = form_values
+        .0
+        .iter()
+        .map(|day_ind| day_ind.parse::<u8>())
+        .collect::<Result<Vec<u8>, _>>()
+        .ok()?;
+
+    day_inds.into_iter().reduce(|acc, ind| acc | (1 << ind))
 }
